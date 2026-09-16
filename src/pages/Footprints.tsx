@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { activityMap, TYPE_LABEL } from '../data/activities'
 import { guides } from '../data/guides'
 import { useStore } from '../store'
@@ -29,8 +29,14 @@ function buildGuideText(items: Checkin[]) {
 }
 
 export function Footprints() {
-  const { checkins, weather } = useStore()
+  const { checkins, weather, applyGuideStops } = useStore()
+  const nav = useNavigate()
   const [copied, setCopied] = useState(false)
+
+  const applyGuide = (activityIds: string[]) => {
+    applyGuideStops(activityIds)
+    nav('/squad')
+  }
 
   const groups = useMemo(() => {
     const map = new Map<string, Checkin[]>()
@@ -85,7 +91,45 @@ export function Footprints() {
               {g.duration} · {g.budget} · {g.weather}
             </p>
             <p className="mt-2 text-sm">{g.body}</p>
+            <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm">
+              {g.stops.map((stop, i) => (
+                <li key={`${g.id}-${i}`}>
+                  {stop.activityIds.length === 0 && stop.note}
+                  {stop.activityIds.length === 1 && (
+                    <Link to={`/activity/${stop.activityIds[0]}`} className="text-teal">
+                      {stop.note}
+                    </Link>
+                  )}
+                  {stop.activityIds.length > 1 && (
+                    <>
+                      <span>{stop.note}</span>
+                      <span className="mt-0.5 block text-xs">
+                        {stop.activityIds.map((id, j) => {
+                          const a = activityMap[id]
+                          if (!a) return null
+                          return (
+                            <span key={id}>
+                              {j > 0 ? ' / ' : ''}
+                              <Link to={`/activity/${id}`} className="text-teal">
+                                {a.title}
+                              </Link>
+                            </span>
+                          )
+                        })}
+                      </span>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ol>
             <p className="mt-2 text-sm text-stamp">避坑：{g.pitfall}</p>
+            <button
+              type="button"
+              onClick={() => applyGuide(g.stops.flatMap((s) => s.activityIds))}
+              className="mt-3 w-full rounded-2xl bg-teal py-2 text-sm text-white"
+            >
+              套用这条线
+            </button>
           </article>
         ))}
       </section>

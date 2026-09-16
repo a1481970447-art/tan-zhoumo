@@ -33,8 +33,11 @@ export function Detail() {
   }
 
   const startSquad = () => {
-    if (!activeSquad) createSquad(`${prefs.nickname}的小队`)
-    vote(activity.id)
+    if (!activeSquad) {
+      createSquad(`${prefs.nickname}的小队`, activity.id)
+    } else {
+      vote(activity.id)
+    }
     nav('/squad')
   }
 

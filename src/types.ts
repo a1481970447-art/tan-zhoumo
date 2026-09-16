@@ -77,6 +77,11 @@ export interface Squad {
   createdAt: string
 }
 
+export interface GuideStop {
+  activityIds: string[]
+  note: string
+}
+
 export interface Guide {
   id: string
   title: string
@@ -84,7 +89,7 @@ export interface Guide {
   duration: string
   budget: string
   weather: string
-  stops: string[]
+  stops: GuideStop[]
   pitfall: string
   body: string
 }

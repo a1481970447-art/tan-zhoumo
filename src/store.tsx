@@ -33,9 +33,10 @@ interface Store {
   squads: Squad[]
   activeSquad: Squad | null
   memberId: string
-  createSquad: (name: string) => Squad
+  createSquad: (name: string, firstVoteActivityId?: string) => Squad
   joinSquad: (code: string, name: string) => string | null
   vote: (activityId: string) => void
+  applyGuideStops: (activityIds: string[]) => void
   nickname: string
 }
 
@@ -87,13 +88,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const createSquad = useCallback(
-    (name: string) => {
+    (name: string, firstVoteActivityId?: string) => {
       const code = `SZ-${uid().slice(0, 4).toUpperCase()}`
       const squad: Squad = {
         code,
         name: name || '周末小队',
         members: [{ id: memberId, name: prefs.nickname }],
-        votes: {},
+        votes: firstVoteActivityId ? { [firstVoteActivityId]: [memberId] } : {},
         createdAt: new Date().toISOString(),
       }
       setSquads((cur) => {
@@ -154,6 +155,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [activeCode, memberId, persistSquads],
   )
 
+  const applyGuideStops = useCallback(
+    (activityIds: string[]) => {
+      const unique = [...new Set(activityIds)]
+      const withMember = (base: Record<string, string[]>) => {
+        const next = { ...base }
+        for (const id of unique) {
+          const cur = next[id] ?? []
+          if (!cur.includes(memberId)) next[id] = [...cur, memberId]
+        }
+        return next
+      }
+
+      if (!activeCode) {
+        const code = `SZ-${uid().slice(0, 4).toUpperCase()}`
+        const squad: Squad = {
+          code,
+          name: `${prefs.nickname}的小队`,
+          members: [{ id: memberId, name: prefs.nickname }],
+          votes: withMember({}),
+          createdAt: new Date().toISOString(),
+        }
+        setSquads((cur) => {
+          const list = [squad, ...cur.filter((s) => s.code !== code)]
+          persistSquads(list, code)
+          return list
+        })
+        return
+      }
+
+      setSquads((cur) => {
+        const squad = cur.find((s) => s.code === activeCode)
+        if (!squad) return cur
+        const list = cur.map((s) =>
+          s.code === squad.code ? { ...s, votes: withMember(s.votes) } : s,
+        )
+        persistSquads(list, squad.code)
+        return list
+      })
+    },
+    [activeCode, memberId, persistSquads, prefs.nickname],
+  )
+
   return (
     <Ctx.Provider
       value={{
@@ -169,6 +212,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         createSquad,
         joinSquad,
         vote,
+        applyGuideStops,
         nickname: prefs.nickname,
       }}
     >
